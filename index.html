@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Scrivi il tuo Nome</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #faf6f0;
+      --parchment: #f2ead8;
+      --gold: #b8965a;
+      --gold-light: #d4b07a;
+      --ink: #1a1410;
+      --dust: #8c7b6a;
+      --rose: #c9a9a6;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: var(--cream);
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      color: var(--ink);
+      touch-action: none;
+    }
+
+    /* Grain texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 520px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 20px 20px 10px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .header-ornament {
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 300;
+      margin-bottom: 4px;
+    }
+
+    .header h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(22px, 6vw, 30px);
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: var(--dust);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    /* ── CANVAS WRAPPER ── */
+    .canvas-wrapper {
+      flex: 1;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .canvas-frame {
+      flex: 1;
+      background: #fffef9;
+      border: 1px solid #e0d5c4;
+      border-radius: 4px;
+      box-shadow:
+        0 2px 12px rgba(184,150,90,0.08),
+        inset 0 0 40px rgba(242,234,216,0.4);
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Corner decorations */
+    .canvas-frame::before, .canvas-frame::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-color: var(--gold-light);
+      border-style: solid;
+      opacity: 0.5;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .canvas-frame::before {
+      top: 8px; left: 8px;
+      border-width: 1px 0 0 1px;
+    }
+    .canvas-frame::after {
+      bottom: 8px; right: 8px;
+      border-width: 0 1px 1px 0;
+    }
+
+    #drawCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .canvas-hint-inner {
+      text-align: center;
+    }
+
+    .canvas-hint-icon {
+      font-size: 28px;
+      opacity: 0.25;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .canvas-hint span {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 15px;
+      color: var(--dust);
+      opacity: 0.6;
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      flex-shrink: 0;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .colors {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .color-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .color-btn:active { transform: scale(0.9); }
+    .color-btn.active { border-color: var(--gold); transform: scale(1.15); }
+
+    .divider {
+      width: 1px;
+      height: 20px;
+      background: var(--parchment);
+      flex-shrink: 0;
+    }
+
+    .sizes {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .size-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+    .size-btn:active { background: var(--parchment); }
+    .size-btn.active .dot { background: var(--gold); }
+
+    .dot {
+      border-radius: 50%;
+      background: var(--ink);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .spacer { flex: 1; }
+
+    .action-btn {
+      background: none;
+      border: 1px solid var(--parchment);
+      border-radius: 50px;
+      padding: 5px 12px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--dust);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-btn:active { background: var(--parchment); color: var(--ink); }
+
+    /* ── BOTTOM: NAME INPUT + SEND ── */
+    .bottom {
+      flex-shrink: 0;
+      padding: 10px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid #e0d5c4;
+      border-radius: 50px;
+      padding: 0 16px;
+    }
+
+    .name-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 14px;
+      color: var(--dust);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .name-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 14px;
+      color: var(--ink);
+      padding: 10px 0;
+    }
+    .name-input::placeholder { color: #c5b9a8; }
+
+    .send-btn {
+      background: var(--gold);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 28px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 4px 16px rgba(184,150,90,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .send-btn:active { transform: scale(0.97); background: var(--gold-light); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── SUCCESS OVERLAY ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(250,246,240,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overlay-icon {
+      font-size: 48px;
+      animation: bloom 0.5s ease forwards;
+    }
+
+    @keyframes bloom {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .overlay h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 30px;
+      color: var(--ink);
+    }
+
+    .overlay p {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dust);
+      text-align: center;
+      padding: 0 32px;
+    }
+
+    .overlay-new {
+      margin-top: 8px;
+      background: none;
+      border: 1px solid var(--gold);
+      border-radius: 50px;
+      padding: 10px 24px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .overlay-new:active { background: var(--gold); color: white; }
+
+    /* ── ERROR TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #4a2020;
+      color: white;
+      border-radius: 50px;
+      padding: 10px 20px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      z-index: 300;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="header-ornament">✦ &nbsp; bomboniere &nbsp; ✦</div>
+    <h1>Scrivi il tuo Nome</h1>
+    <p>con il dito o il pennino</p>
+  </div>
+
+  <div class="canvas-wrapper">
+    <div class="toolbar">
+      <div class="colors" id="colorPalette">
+        <div class="color-btn active" data-color="#1a1410" style="background:#1a1410" title="Inchiostro"></div>
+        <div class="color-btn" data-color="#4a3728" style="background:#4a3728" title="Seppia"></div>
+        <div class="color-btn" data-color="#1c2b4a" style="background:#1c2b4a" title="Blu"></div>
+        <div class="color-btn" data-color="#7c2d3e" style="background:#7c2d3e" title="Borgogna"></div>
+        <div class="color-btn" data-color="#8a6a2a" style="background:#8a6a2a" title="Oro"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="sizes" id="sizePalette">
+        <button class="size-btn" data-size="2" title="Sottile">
+          <div class="dot" style="width:4px;height:4px"></div>
+        </button>
+        <button class="size-btn active" data-size="4" title="Medio">
+          <div class="dot" style="width:7px;height:7px"></div>
+        </button>
+        <button class="size-btn" data-size="8" title="Spesso">
+          <div class="dot" style="width:11px;height:11px"></div>
+        </button>
+      </div>
+      <div class="spacer"></div>
+      <button class="action-btn" id="undoBtn">↩ Annulla</button>
+      <button class="action-btn" id="clearBtn">✕ Pulisci</button>
+    </div>
+
+    <div class="canvas-frame">
+      <canvas id="drawCanvas"></canvas>
+      <div class="canvas-hint" id="hint">
+        <div class="canvas-hint-inner">
+          <i class="canvas-hint-icon">✍️</i>
+          <span>scrivi qui il tuo nome</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="name-row">
+      <span class="name-label">Nome evento</span>
+      <input class="name-input" id="nameInput" type="text" placeholder="es. Matrimonio Rossi" maxlength="40">
+    </div>
+    <button class="send-btn" id="sendBtn">
+      <span>✦</span>
+      <span id="sendLabel">Invia al Drive</span>
+    </button>
+  </div>
+
+</div>
+
+<!-- Success Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-icon">🎀</div>
+  <h2>Grazie!</h2>
+  <p>Il tuo bigliettino è stato salvato con successo</p>
+  <button class="overlay-new" id="newBtn">Scrivi un altro</button>
+</div>
+
+<!-- Error Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────
+  // Incolla qui l'URL del tuo Google Apps Script dopo il deploy
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzg34p_tgxRBcpkewbw7tj_WqgSTrMKUXo_a5w4wcyf5obneg7sBb38p9SzsqULdL9Q/exec';
+  // ────────────────────────────────────────────────────────────
+
+  const canvas  = document.getElementById('drawCanvas');
+  const ctx     = canvas.getContext('2d');
+  const hint    = document.getElementById('hint');
+  const sendBtn = document.getElementById('sendBtn');
+  const sendLabel = document.getElementById('sendLabel');
+  const overlay = document.getElementById('overlay');
+  const toast   = document.getElementById('toast');
+
+  let drawing = false;
+  let penColor = '#1a1410';
+  let penSize  = 4;
+  let history  = [];   // snapshot stack for undo
+  let hasDrawn = false;
+
+  // ── CANVAS SIZING ──
+  function resizeCanvas() {
+    const frame = canvas.parentElement;
+    const rect  = frame.getBoundingClientRect();
+    // Save current content
+    const img = canvas.toDataURL();
+    canvas.width  = rect.width;
+    canvas.height = rect.height;
+    // Restore
+    const i = new Image();
+    i.onload = () => ctx.drawImage(i, 0, 0);
+    i.src = img;
+    ctx.lineCap   = 'round';
+    ctx.lineJoin  = 'round';
+  }
+
+  function initCanvas() {
+    const frame = canvas.parentElement;
+    const rect  = frame.getBoundingClientRect();
+    canvas.width  = rect.width;
+    canvas.height = rect.height;
+    ctx.lineCap   = 'round';
+    ctx.lineJoin  = 'round';
+    ctx.fillStyle = '#fffef9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    saveSnapshot();
+  }
+
+  window.addEventListener('resize', resizeCanvas);
+  setTimeout(initCanvas, 50);
+
+  // ── SNAPSHOT (undo) ──
+  function saveSnapshot() {
+    if (history.length >= 30) history.shift();
+    history.push(canvas.toDataURL());
+  }
+
+  // ── DRAW HELPERS ──
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    const { x, y } = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = penColor;
+    ctx.lineWidth   = penSize;
+    if (!hasDrawn) {
+      hasDrawn = true;
+      hint.style.opacity = '0';
+    }
+  }
+
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const { x, y } = getPos(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  function endDraw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    drawing = false;
+    ctx.closePath();
+    saveSnapshot();
+  }
+
+  canvas.addEventListener('mousedown',  startDraw);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove',  draw,      { passive: false });
+  canvas.addEventListener('touchend',   endDraw,   { passive: false });
+
+  // ── UNDO ──
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    if (history.length <= 1) return;
+    history.pop();
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = history[history.length - 1];
+    if (history.length <= 1) { hasDrawn = false; hint.style.opacity = '1'; }
+  });
+
+  // ── CLEAR ──
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    ctx.fillStyle = '#fffef9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    history = [];
+    saveSnapshot();
+    hasDrawn = false;
+    hint.style.opacity = '1';
+  });
+
+  // ── COLOR PICKER ──
+  document.getElementById('colorPalette').addEventListener('click', e => {
+    const btn = e.target.closest('.color-btn');
+    if (!btn) return;
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    penColor = btn.dataset.color;
+  });
+
+  // ── SIZE PICKER ──
+  document.getElementById('sizePalette').addEventListener('click', e => {
+    const btn = e.target.closest('.size-btn');
+    if (!btn) return;
+    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    penSize = parseInt(btn.dataset.size);
+  });
+
+  // ── SHOW TOAST ──
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+
+  // ── SEND ──
+  sendBtn.addEventListener('click', async () => {
+    if (!hasDrawn) { showToast('Scrivi prima il tuo nome! ✍️'); return; }
+    if (APPS_SCRIPT_URL === 'INCOLLA_QUI_IL_TUO_APPS_SCRIPT_URL') {
+      showToast('⚠️ Configura prima l\'URL di Apps Script'); return;
+    }
+
+    sendBtn.disabled = true;
+    sendLabel.textContent = 'Invio in corso…';
+
+    const eventName = document.getElementById('nameInput').value.trim() || 'Bigliettino';
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ image: imageData, name: eventName })
+      });
+      // no-cors → risposta opaca, consideriamo successo se non ci sono eccezioni
+      overlay.classList.add('visible');
+    } catch (err) {
+      showToast('Errore di rete — riprova');
+      sendBtn.disabled = false;
+      sendLabel.textContent = 'Invia al Drive';
+    }
+  });
+
+  // ── NEW ──
+  document.getElementById('newBtn').addEventListener('click', () => {
+    overlay.classList.remove('visible');
+    ctx.fillStyle = '#fffef9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    history = [];
+    saveSnapshot();
+    hasDrawn = false;
+    hint.style.opacity = '1';
+    sendBtn.disabled = false;
+    sendLabel.textContent = 'Invia al Drive';
+    document.getElementById('nameInput').value = '';
+  });
+</script>
+
+</body>
+</html>
